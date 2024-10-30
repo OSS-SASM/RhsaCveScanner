@@ -36,11 +36,33 @@ def download_file( uri, savepath ):
 
 
         elif path_getsize( file ) == int( parse_headers( r.headers, 'content-length' ) ):
-                return True
+            return True
             
         else:
             raise
+
         
+def download_file( uri, savepath ):
+    print( f'[+] Downloading from { uri }', end=' ' )
+        
+    file  = path_join( savepath, path_basename( uri ) )
+
+    if ( r := requests_get( uri ) ).status_code != 200:
+        print( '[PASS]' )
+        rmfile( file )
+        return False
+            
+    with open( file, 'wb' ) as f:
+        f.write( r.content )
+            
+    if r.status_code != 200:
+        print( '[PASS]' )
+        rmfile( file )
+        return False
+        
+    print( '[DONE]' )
+    return True
+    
 def http_request(
       url     : str
     , params  : dict = None
