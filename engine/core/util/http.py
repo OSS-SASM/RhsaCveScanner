@@ -32,7 +32,7 @@ def download_file( uri, savepath ):
     with open( file, 'wb' ) as f:
         f.write( r.content )
             
-    if r.status_code != 200:
+    if path_getsize( file ) <= 0:
         print( '[PASS]' )
         rmfile( file )
         return False
