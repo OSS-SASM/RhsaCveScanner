@@ -4,11 +4,7 @@
 # Author : Hoon
 # 
 # ====================== Comments ======================
-# CPE Description
-# cpe:2.3: {part} : {vendor} : {product} : {version} : {update} : {edition} : {language} : {sw_edition} : {target_sw} : {target_hw} : {other}
-#            └ h = hardware
-#            └ o = operating system
-#            └ a = application
+#
 
 from os        import listdir
 from os.path   import basename as path_basename
