@@ -8,7 +8,6 @@
 
 from time    import time
 from sys     import stdout
-from psutil  import Process
 from logging import DEBUG, INFO, WARNING, ERROR, CRITICAL
 from logging import getLogger, Formatter, StreamHandler
 
@@ -239,9 +238,3 @@ def elapsed( original_fn ):
         return result
     
     return wrapper
-
-def get_memory_usage( pid ):
-    if   ( rss := Process( pid ).memory_info().rss ) < ( 1024      ): return f"{ round( rss / 2      , 3 ) } B"
-    elif ( rss                                     ) < ( 1024 ** 2 ): return f"{ round( rss / 2 ** 10, 3 ) } KB"
-    elif ( rss                                     ) < ( 1024 ** 3 ): return f"{ round( rss / 2 ** 20, 3 ) } MB"
-    elif ( rss                                     ) < ( 1024 ** 4 ): return f"{ round( rss / 2 ** 30, 3 ) } GB"
