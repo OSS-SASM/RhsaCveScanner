@@ -18,29 +18,6 @@ from json     import dump     as json_dump
 # Engine Libraries
 from engine.core.config.default import ENCODING
 from engine.core.util.file      import rmfile
-
-def download_file( uri, savepath ):
-    file  = path_join( savepath, path_basename( uri ) )
-    retry = 3
-    for _ in range( retry ):
-
-        r = requests_get( uri )
-
-        with open( file, 'wb' ) as f:
-            f.write( r.content )
-            
-        if r.status_code != 200:
-            rmfile( file )
-
-            return False
-
-
-        elif path_getsize( file ) == int( parse_headers( r.headers, 'content-length' ) ):
-            return True
-            
-        else:
-            raise
-
         
 def download_file( uri, savepath ):
     print( f'[+] Downloading from { uri }', end=' ' )
