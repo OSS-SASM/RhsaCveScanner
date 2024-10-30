@@ -66,7 +66,6 @@ OVAL은 취약점과 관련된 정보를 표현하기 위해 사용되는 XML �
 #### rhsaCveScanner는 아래와 Python 라이브러리를 사용합니다.
 ```
 cvss==3.2
-psutil==5.9.6
 requests==2.31.0
 xmltodict==0.12.0
 ```
