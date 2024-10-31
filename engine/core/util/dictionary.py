@@ -37,9 +37,8 @@ def merge( a, b ):
             
             elif isinstance( a[ key ], list )\
             and  isinstance( b[ key ], list ):
-                a[ key ] = list( set( a[ key ] + b[ key ] ) )
-                # try             : a[ key ] = list( set( a[ key ] + b[ key ] ) )
-                # except TypeError: a[ key ] = [ merge( _a, _b ) for _a in a[ key ] for _b in b[ key ] ]
+                try             : a[ key ] = list( set( a[ key ] + b[ key ] ) )
+                except TypeError: a[ key ] = [ merge( _a, _b ) for _a in a[ key ] for _b in b[ key ] ]
                 
             elif isinstance( a[ key ], set  )\
             and  isinstance( b[ key ], list ):
