@@ -63,7 +63,7 @@ OVAL은 취약점과 관련된 정보를 표현하기 위해 사용되는 XML �
  VERSION             3.9.16
 ```
 
-#### rhsaCveScanner는 아래와 Python 라이브러리를 사용합니다.
+#### rhsaCveScanner는 아래와 같은 Python 라이브러리를 사용합니다.
 ```
 cvss==3.2
 requests==2.31.0
@@ -132,6 +132,9 @@ Commands:
   -R, --dataset-rebuild
                         Rebuild dataset from RHSA OVALs
   -C, --cve-scan        Scanning CVEs with rpm packages
+
+Dataset File:
+  dataset               Dataset JSON file path
 ```
 
 > `-V --dataset-version`
