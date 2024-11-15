@@ -48,8 +48,8 @@ def merge( a, b ):
             and  isinstance( b[ key ], set  ):
                 set( a[ key ] ).update( b[ key ] ); list( a[ key ] )
             
-            elif ( a[ key ] == None            )\
-            and  ( isinstance( b[ key ], str ) ):
+            elif (             a[ key ] == None )\
+            and  ( isinstance( b[ key ], str )  ):
                 a[ key ] = b[ key ]
 
             elif type( a[ key ] ) == type( b[ key ] ):
@@ -60,20 +60,20 @@ def merge( a, b ):
 
     return a
 
-def sort_dictionary(item):
+def sort_dictionary( item ):
     dic = {}
     for k, v in sorted( item.items() ):
         if isinstance( v, dict ):
-            dic[k] = sort_dictionary( v )
+            dic[ k ] = sort_dictionary( v )
 
-        elif isinstance( v, set  ):
-            dic[k] = list( sorted(v) )
+        elif isinstance( v, set ):
+            dic[ k ] = list( sorted( v ) )
 
         elif isinstance( v, list ): 
-            try             : dic[k] = list( set( sorted(v) ) )
-            except TypeError: dic[k] = v
-
+            try             : dic[ k ] = list( set( sorted( v ) ) )
+            except TypeError: dic[ k ] = [ sort_dictionary( _ ) if isinstance( _, dict ) else _ for _ in v ]
+                
         else: 
-            dic[k] = v
+            dic[ k ] = v
 
     return dic
