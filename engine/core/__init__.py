@@ -11,7 +11,7 @@ from json     import dump  as json_dump
 from json     import dumps as json_dumps
 
 # Engine Libraries
-from engine.core.util           import check_patchlist, get_system_rpmlist
+from engine.core.util           import check_patchlist, get_system_rpmlist, sort_dictionary
 from engine.core.src            import REDHAT
 from engine.core.config.default import SRC_PATH, DATEFORMAT, ENCODING
 
@@ -33,7 +33,7 @@ def rebuild_dataset( dataset_file, logger ):
     ######################################################################################################################################################
     try:
         with open( dataset_file, 'w', encoding=ENCODING ) as f:
-            json_dump( {
+            json_dump( sort_dictionary( {
                   '@created_at' : datetime.now().strftime( DATEFORMAT )
                 , **REDHAT(
                       src_path             = SRC_PATH
@@ -41,7 +41,7 @@ def rebuild_dataset( dataset_file, logger ):
                     , download_src_files   = True
                     , logger               = logger
                 )()
-            }, f, default=str, indent=4 )
+            } ), f, indent=4 )
     
     except:
         logger.error( 'Dataset rebuild failed' )
