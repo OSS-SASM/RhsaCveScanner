@@ -7,7 +7,7 @@
 #  
 
 from os.path  import abspath
-from argparse import ArgumentParser, RawTextHelpFormatter, SUPPRESS
+from argparse import ArgumentParser, RawTextHelpFormatter
 from sys      import exit as sys_exit
 
 # Engine Libraries
@@ -35,7 +35,7 @@ def parse_args():
     datasetManagementGrp.add_argument( '-C', '--cve-scan'       , help='Scanning CVEs with rpm packages'   , dest='commands', action='append_const', const='cve_scan'        )
     
     positional_group = parser.add_argument_group( 'Dataset File' )
-    positional_group.add_argument( "dataset", help=SUPPRESS, type=str )
+    positional_group.add_argument( "dataset", help='Dataset JSON file path', type=str )
     
     return { 
         k : list( dict.fromkeys( v if v else {} ) )
