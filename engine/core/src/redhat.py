@@ -4,7 +4,11 @@
 # Author : Hoon
 # 
 # ====================== Comments ======================
-#
+# CPE Description
+# cpe:2.3: {part} : {vendor} : {product} : {version} : {update} : {edition} : {language} : {sw_edition} : {target_sw} : {target_hw} : {other}
+#            └ h = hardware
+#            └ o = operating system
+#            └ a = application
 
 from os        import listdir
 from os.path   import basename as path_basename
@@ -54,7 +58,7 @@ class REDHAT:
         mkdir( path_abspath( path_join( self.src_path, 'oval_v2' ) ) )
         
         ################################################################################################################################################################################
-        # Retrieve & get latest cpes, cpematch, cves datas from NVD
+        # Download security advisory datas from redhat.com
         ################################################################################################################################################################################
         if download_src_files:
 
@@ -125,7 +129,7 @@ class REDHAT:
             ###############################################################################################################################################################
             # CVE
             ###############################################################################################################################################################
-            for cve in ( cveList := ifelse(
+            for i, cve in enumerate( cveList := ifelse(
                   _condition = isinstance( advisory[ 'cve' ], list )
                 , _istrue    =             advisory[ 'cve' ]
                 , _else      =           [ advisory[ 'cve' ] ]
@@ -136,6 +140,16 @@ class REDHAT:
                     , 'title'       : definition[ 'metadata' ][ 'title'       ]
                     , 'description' : definition[ 'metadata' ][ 'description' ]
                     , 'from'        : advisory  [ '@from'    ]
+                    , 'reference'   : ifelse(
+                          _condition = isinstance( definition[ 'metadata' ][ 'reference' ], list )
+                        , _istrue    =             definition[ 'metadata' ][ 'reference' ]
+                        , _else      =           [ definition[ 'metadata' ][ 'reference' ] ]
+                      )
+                    , 'bugzilla'    : ifelse(
+                          _condition = isinstance( definition[ 'metadata' ][ 'bugzilla' ], list )
+                        , _istrue    =             definition[ 'metadata' ][ 'bugzilla' ]
+                        , _else      =           [ definition[ 'metadata' ][ 'bugzilla' ] ]
+                      )[ i ] if 'bugzilla' in definition[ 'metadata' ] else []
                 } )
 
             ###############################################################################################################################################################
@@ -176,17 +190,34 @@ class REDHAT:
                     , _istrue    =             child[ 'criterion' ]
                     , _else      =           [ child[ 'criterion' ] ]
                 ):
-                    if 'is earlier than' not in criterion[ '@comment' ]: continue
-                    else                                               : comment = criterion[ '@comment' ].split()
+                    if 'is earlier than' not in criterion[ '@comment' ]:
+                        continue
 
-                    rpm          = '-'.join( [ comment[ 0 ], comment[ -1 ] ] ).lower()
-                    rpm_name     = rpm.split( ':' )[ 0 ].rsplit( '-', 1 )[ 0 ] if ':' in rpm else rpm.split( '.' )[ 0 ].rsplit( '-', 1 )[ 0 ]
-                    rpm_version  = rpm[ len( rpm_name ) + 1: ]
-                    
-                    rhel_version = 'el' + rpm_version.split( 'el' )[ 1 ].split( '.'       )[ 0 ] if 'el'     in rpm_version else '-'
-                    epoch        =        rpm_version.split( ':'  )[ 0 ]                         if ':'      in rpm_version else '-'
-                    version      =        rpm_version.split( ':'  )[ 1 ].split( '-'       )[ 0 ] if ':'      in rpm_version else rpm_version.split( '-' )[ 0 ]
-                    release      =        rpm_version.split( '-'  )[ 1 ].split( '.centos' )[ 0 ] if 'centos' in rpm_version else rpm_version.split( '-' )[ 1 ]
+                    rpm_name = ( rpm.split( ':' )[ 0 ].rsplit( '-', 1 )[ 0 ]
+                        if ':' in ( rpm :=
+                            '-'.join( [ 
+                                  ( comment := criterion[ '@comment' ].split() )[  0 ]
+                                , ( comment                                    )[ -1 ]
+                            ] ).lower()
+                        )
+                        else rpm.split( '.' )[ 0 ].rsplit( '-', 1 )[ 0 ]
+                    )
+                    rhel_version = ( 'el' + rpm_version.split( 'el' )[ 1 ].split( '.' )[ 0 ]
+                        if   'el' in ( rpm_version := rpm[ len( rpm_name ) + 1: ] )
+                        else '-'
+                    )
+                    epoch = ( rpm_version.split( ':' )[ 0 ]
+                        if   ':' in rpm_version
+                        else '-'
+                    )
+                    version = ( rpm_version.split( ':' )[ 1 ].split( '-' )[ 0 ]
+                        if   ':' in rpm_version
+                        else rpm_version.split( '-' )[ 0 ]
+                    )
+                    release = ( rpm_version.split( '-' )[ 1 ].split( '.centos' )[ 0 ]
+                        if   'centos' in rpm_version
+                        else rpm_version.split( '-' )[ 1 ]
+                    )
 
                     merge(
                           result
@@ -199,7 +230,7 @@ class REDHAT:
         return result
     
     def _parse_cvemeta( self, data ):
-        result = {
+        PARSED = {
             'redhat' : {
                 'rhsa' : {
                       'title'       : data[ 'title'       ]
@@ -207,24 +238,40 @@ class REDHAT:
                 }
             }
         }
-
+            
         #################################################################################################################################################################
         # REFERENCE
         #################################################################################################################################################################
         if '@href' in data:
-            result[ 'redhat' ][ 'rhsa' ][ 'reference' ] = data[ '@href' ]
+            merge(
+                  PARSED[ 'redhat' ]
+                , { 'reference' : [ data[ '@href' ] ] }   
+            )
+            
+        if '@href' in data[ 'bugzilla' ]:
+            merge(
+                  PARSED[ 'redhat' ]
+                , { 'reference' : [ data[ 'bugzilla' ][ '@href' ] ] }   
+            )
+            
+        for r in data[ 'reference' ]:
+            if 'CVE' != r[ '@source' ]:
+                merge(
+                      PARSED[ 'redhat' ]
+                    , { 'reference' : [ r[ '@ref_url' ] ] }   
+                )   
 
         #################################################################################################################################################################
         # IMPACT
         #################################################################################################################################################################
         if '@impact' in data:
-            result[ 'redhat' ][ 'rhsa' ][ 'impact' ] = data[ '@impact' ]
+            PARSED[ 'redhat' ][ 'rhsa' ][ 'impact' ] = data[ '@impact' ]
 
         #################################################################################################################################################################
         # CWE
         #################################################################################################################################################################
         if '@cwe' in data:
-            result[ 'redhat' ][ 'rhsa' ][ 'cwe' ] = [ f"CWE-{ no }"
+            PARSED[ 'redhat' ][ 'rhsa' ][ 'cwe' ] = [ f"CWE-{ no }"
                 for no in list( set( re_findall(
                       r'\b[^a-z0-9]*CWE[^\da-z]*(\d+)[^\d\w]?\b'
                     , data[ '@cwe' ]
@@ -237,7 +284,7 @@ class REDHAT:
         #################################################################################################################################################################
         if '@cvss2' in data:
             merge(
-                  result[ 'redhat' ][ 'rhsa' ]
+                  PARSED[ 'redhat' ][ 'rhsa' ]
                 , {
                     'cvss' : {
                         '2.0' : {
@@ -260,13 +307,13 @@ class REDHAT:
         
         if '@cvss3' in data:
             merge(
-                  result[ 'redhat' ][ 'rhsa' ]
+                  PARSED[ 'redhat' ][ 'rhsa' ]
                 , {
                     'cvss' : {
-                        '3.0' : {
-                              'source'              :                                            data[ 'from'   ]
-                            , 'vectorString'        : ( vectorString :=   '/'.join( ( splited := data[ '@cvss3' ].split( '/' ) )[ 1: ] ) )
-                            , 'baseScore'           : ( baseScore    := round( float( splited[ 0 ]                             ), 1    ) )
+                        ( splited := data[ '@cvss3' ].split( '/' ) )[ 1 ].lstrip( 'CVSS:' ) : {
+                              'source'              : data[ 'from' ]
+                            , 'vectorString'        : ( vectorString :=     '/'.join( splited[ 1: ] )      )
+                            , 'baseScore'           : ( baseScore    := round( float( splited[ 0  ] ), 1 ) )
                             , 'temporalScore'       : round( float( this.temporal_score if ( this := CVSS3( vectorString ) ).temporal_score else '0.0' ), 1 )
                             , 'exploitabilityScore' : round( float( this.esc            if ( this                          ).esc            else '0.0' ), 1 )
                             , 'impactScore'         : round( float( this.isc            if ( this                          ).isc            else '0.0' ), 1 )
@@ -282,4 +329,4 @@ class REDHAT:
                 }
             )
 
-        return result
+        return PARSED
