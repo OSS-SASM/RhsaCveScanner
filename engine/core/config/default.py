@@ -55,7 +55,7 @@ ASCII_ART = dedent( """
 
 # Info
 MODULE            = 'rhsaCveScanner'
-VERSION           = '1.0.0'
+VERSION           = '1.0.1'
 
 # Date Format
 DATEFORMAT        = '%Y-%m-%dT%H:%M:%S KST'
