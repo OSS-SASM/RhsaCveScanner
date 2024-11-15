@@ -74,7 +74,7 @@ xmltodict==0.12.0
 
 ```
 # python3 rhsaCveScanner -h
-usage: rhsaCveScanner [-h] [-v] [-d] (-V | -R | -C)
+usage: RhsaCveScanner [-h] [-v] [-d] (-V | -R | -C) dataset
 
                                                *
                                               **             *   *        
