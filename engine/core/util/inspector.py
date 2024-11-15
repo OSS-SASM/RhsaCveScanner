@@ -55,60 +55,47 @@ def merge( a, b ):
     return a
 
 def my_rpm( rpm ):
-    rpm_name                                                          \
-       =    rpm.split( ':' )[ 0 ].rsplit( '-', 1 )[ 0 ] if ':' in rpm \
-       else rpm.split( '.' )[ 0 ].rsplit( '-', 1 )[ 0 ]
+    rpm_name = (
+            rpm.split( ':' )[ 0 ].rsplit( '|', 1 )[ 0 ] if ':' in rpm
+       else rpm                  .rsplit( '|', 1 )[ 0 ]
+    )
     
-    rhel_version                                                                                                              \
-       =    'el' + rpm_version.split( 'el' )[ 1 ].split( '.' )[ 0 ] if 'el' in ( rpm_version := rpm[ len( rpm_name ) + 1: ] ) \
+    rhel_version = (
+            'el' + rpm_version.split( 'el' )[ 1 ].split( '.' )[ 0 ] if 'el' in ( rpm_version := rpm[ len( rpm_name ) + 1: ] )
        else '-'
+    )
     
-    epoch                                                       \
-       =    rpm_version.split( ':' )[ 0 ] if ':' in rpm_version \
+    epoch = (
+            rpm_version.split( ':' )[ 0 ] if ':' in rpm_version
        else '-'
+    )
     
-    version                                                                       \
-       =    rpm_version.split( ':' )[ 1 ].split( '-' )[ 0 ] if ':' in rpm_version \
+    version = (
+            rpm_version.split( ':' )[ 1 ].split( '-' )[ 0 ] if ':' in rpm_version
        else rpm_version.split( '-' )[ 0 ]
+    )
     
-    release                                                                                  \
-       =    rpm_version.split( '-' )[ 1 ].split( '.centos' )[ 0 ] if 'centos' in rpm_version \
+    release = (
+            rpm_version.split( '-' )[ 1 ].split( '.centos' )[ 0 ] if 'centos' in rpm_version
        else rpm_version.split( '-' )[ 1 ]
+    )
     
     return { rhel_version: { rpm_name: { epoch: { version: { release: { 
-        'rpm': rpm 
+        'rpm': rpm.replace( '|', '-' )
     } } } } } }
 
 def get_system_rpmlist( installedList=[] ):
     my_system_rpmlist = {}
 
-    for rpm_string in popen( '/usr/bin/rpm -qa --queryformat "%{N}-%{EPOCHNUM}:%{V}-%{R}\\n"' ).read().strip().split( '\n' ) if not installedList else installedList:
+    for rpm_string in popen( '/usr/bin/rpm -qa --queryformat "%{N}|%{EPOCHNUM}:%{V}-%{R}\\n"' ).read().strip().split( '\n' ) if not installedList else installedList:
       
-        if rpm_string == '':
+        if (
+               ( rpm_string == ''                   )
+            or ( rpm_string.startswith( 'kernel-' ) )
+        ):
             continue
 
-        rpm_name =    rpm_string.split( ':' )[ 0 ].rsplit( '-', 1 )[ 0 ] if ':' in rpm_string \
-                 else rpm_string.split( '.' )[ 0 ].rsplit( '-', 1 )[ 0 ]
-
-      
-        if rpm_name != 'kernel':
-            merge(
-                  my_system_rpmlist
-                , my_rpm( rpm_string )
-            )
-
-        else:
-
-            rpm_release_second_field = rpm_string.split( '-' )[ -1 ].split( '.' )[ 1 ]
-
-            if not ( 
-                    ( len( rpm_release_second_field ) >= 2    )
-                and ( rpm_release_second_field[ 0:2 ] == 'el' )
-            ):
-                merge(
-                      my_system_rpmlist
-                    , my_rpm( rpm_string )
-                )
+        merge( my_system_rpmlist, my_rpm( rpm_string ) )
 
     return my_system_rpmlist
 
@@ -255,7 +242,10 @@ def check_patchlist( dataset_file, system_rpmlist ):
    
     #######################################################################
     with open( dataset_file, 'r', encoding=ENCODING ) as f:
-        patchlist = json_load( f )[ 'criteria' ][ 'rpm' ]
+        jsonContent = json_load( f )
+    
+    patchlist = jsonContent[ 'criteria' ][ 'rpm' ]
+    cvedict   = jsonContent[ 'cve'      ]
     
     result = {}
     p      = patchlist
@@ -277,9 +267,9 @@ def check_patchlist( dataset_file, system_rpmlist ):
                         , { 
                             rhv : { 
                                 rpm: {
-                                     '_installed' : vul[ '_installed' ]
-                                   , '_vulnfixed' : vul[ '_patch'     ]
-                                   , 'cve'        : vul[ 'cve'        ]
+                                     '_installed' :                                         vul[ '_installed' ]
+                                   , '_vulnfixed' :                                         vul[ '_patch'     ]
+                                   , 'cve'        : { cveID : cvedict[ cveID ] for cveID in vul[ 'cve'        ] }
                                 }
                             }
                           }
