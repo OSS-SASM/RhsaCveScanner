@@ -198,17 +198,14 @@ class REDHAT:
                     rpm_version  = ( comment                                    )[ -1 ] if ':' in comment[ -1 ] else f'0:{ comment[ -1 ] }'
                     
                     rhel_version = 'el' + rpm_version.split( 'el' )[ 1 ].split( '.'       )[ 0 ] if 'el'     in rpm_version else '-'
-                    epoch        =        rpm_version.split( ':'  )[ 0 ]                         if ':'      in rpm_version else '-'
-                    version      =        rpm_version.split( ':'  )[ 1 ].split( '-'       )[ 0 ] if ':'      in rpm_version else rpm_version.split( '-' )[ 0 ]
+                    epoch        =        rpm_version.split( ':'  )[ 0 ]
+                    version      =        rpm_version.split( ':'  )[ 1 ].split( '-'       )[ 0 ]
                     release      =        rpm_version.split( '-'  )[ 1 ].split( '.centos' )[ 0 ] if 'centos' in rpm_version else rpm_version.split( '-' )[ 1 ]
 
                     merge(
                           result
                         , { rhel_version: { rpm_name: { epoch: { version: { release: {
-                              'rpm' : (
-                                     f"{ rpm_name }-{ rpm_version }" if ':' in rpm_version
-                                else f"{ rpm_name }-0:{ rpm_version }"
-                              )
+                              'rpm' : f"{ rpm_name }-{ rpm_version }"
                             , 'cve' : cveList
                         } } } } } }
                     )
