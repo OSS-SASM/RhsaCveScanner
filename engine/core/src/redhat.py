@@ -190,39 +190,25 @@ class REDHAT:
                     , _istrue    =             child[ 'criterion' ]
                     , _else      =           [ child[ 'criterion' ] ]
                 ):
+                    
                     if 'is earlier than' not in criterion[ '@comment' ]:
                         continue
-
-                    rpm_name = ( rpm.split( ':' )[ 0 ].rsplit( '-', 1 )[ 0 ]
-                        if ':' in ( rpm :=
-                            '-'.join( [ 
-                                  ( comment := criterion[ '@comment' ].split() )[  0 ]
-                                , ( comment                                    )[ -1 ]
-                            ] ).lower()
-                        )
-                        else rpm.split( '.' )[ 0 ].rsplit( '-', 1 )[ 0 ]
-                    )
-                    rhel_version = ( 'el' + rpm_version.split( 'el' )[ 1 ].split( '.' )[ 0 ]
-                        if   'el' in ( rpm_version := rpm[ len( rpm_name ) + 1: ] )
-                        else '-'
-                    )
-                    epoch = ( rpm_version.split( ':' )[ 0 ]
-                        if   ':' in rpm_version
-                        else '-'
-                    )
-                    version = ( rpm_version.split( ':' )[ 1 ].split( '-' )[ 0 ]
-                        if   ':' in rpm_version
-                        else rpm_version.split( '-' )[ 0 ]
-                    )
-                    release = ( rpm_version.split( '-' )[ 1 ].split( '.centos' )[ 0 ]
-                        if   'centos' in rpm_version
-                        else rpm_version.split( '-' )[ 1 ]
-                    )
+                        
+                    rpm_name     = ( comment := criterion[ '@comment' ].split() )[  0 ]
+                    rpm_version  = ( comment                                    )[ -1 ]
+                    
+                    rhel_version = 'el' + rpm_version.split( 'el' )[ 1 ].split( '.'       )[ 0 ] if 'el'     in rpm_version else '-'
+                    epoch        =        rpm_version.split( ':'  )[ 0 ]                         if ':'      in rpm_version else '-'
+                    version      =        rpm_version.split( ':'  )[ 1 ].split( '-'       )[ 0 ] if ':'      in rpm_version else rpm_version.split( '-' )[ 0 ]
+                    release      =        rpm_version.split( '-'  )[ 1 ].split( '.centos' )[ 0 ] if 'centos' in rpm_version else rpm_version.split( '-' )[ 1 ]
 
                     merge(
                           result
                         , { rhel_version: { rpm_name: { epoch: { version: { release: {
-                              'rpm' : rpm
+                              'rpm' : (
+                                     f"{ rpm_name }-{ rpm_version }" if ':' in rpm_version
+                                else f"{ rpm_name }-0:{ rpm_version }"
+                              )
                             , 'cve' : cveList
                         } } } } } }
                     )
