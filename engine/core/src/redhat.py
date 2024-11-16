@@ -195,7 +195,7 @@ class REDHAT:
                         continue
                         
                     rpm_name     = ( comment := criterion[ '@comment' ].split() )[  0 ]
-                    rpm_version  = ( comment                                    )[ -1 ]
+                    rpm_version  = ( comment                                    )[ -1 ] if ':' in comment[ -1 ] else f'0:{ comment[ -1 ] }'
                     
                     rhel_version = 'el' + rpm_version.split( 'el' )[ 1 ].split( '.'       )[ 0 ] if 'el'     in rpm_version else '-'
                     epoch        =        rpm_version.split( ':'  )[ 0 ]                         if ':'      in rpm_version else '-'
