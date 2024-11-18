@@ -193,19 +193,27 @@ class REDHAT:
                     
                     if 'is earlier than' not in criterion[ '@comment' ]:
                         continue
-                        
-                    rpm_name     = ( comment := criterion[ '@comment' ].split() )[  0 ]
-                    rpm_version  = ( comment                                    )[ -1 ] if ':' in comment[ -1 ] else f'0:{ comment[ -1 ] }'
                     
-                    rhel_version = 'el' + rpm_version.split( 'el' )[ 1 ].split( '.'       )[ 0 ] if 'el'     in rpm_version else '-'
-                    epoch        =        rpm_version.split( ':'  )[ 0 ]
-                    version      =        rpm_version.split( ':'  )[ 1 ].split( '-'       )[ 0 ]
-                    release      =        rpm_version.split( '-'  )[ 1 ].split( '.centos' )[ 0 ] if 'centos' in rpm_version else rpm_version.split( '-' )[ 1 ]
+                    name    = ( splited := criterion[ '@comment' ].lower().split() )[  0 ]
+                    version = ( splited                                            )[ -1 ] if ':' in splited[ -1 ] else f'0:{ splited[ -1 ] }'
+                    distro  = (
+                        f"rhel{ version.split( 'rhel' )[ 1 ].split( '.' )[ 0 ] }" if 'rhel' in version else
+                        f"el{   version.split( 'el'   )[ 1 ].split( '.' )[ 0 ] }" if 'el'   in version else
+                        '-'
+                    )
+                    
+                    e = version.split( ':'  )[ 0 ]
+                    v = version.split( ':'  )[ 1 ].split( '-'       )[ 0 ]
+                    r = version.split( '-'  )[ 1 ].split( '.centos' )[ 0 ] if 'centos' in version else version.split( '-' )[ 1 ]
 
                     merge(
                           result
-                        , { rhel_version: { rpm_name: { epoch: { version: { release: {
-                              'rpm' : f"{ rpm_name }-{ rpm_version }"
+                        , { distro: { name: { e: { v: { r: {
+                              'rpm' : ifelse(
+                                    _condition = ( e == '0' )
+                                  , _istrue    = f"{ name }-{ v }{ '-' + r if r != '-' else '' }"
+                                  , _else      = f"{ name }-{ version }"
+                              )
                             , 'cve' : cveList
                         } } } } } }
                     )
