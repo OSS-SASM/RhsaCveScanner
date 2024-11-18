@@ -55,39 +55,32 @@ def merge( a, b ):
     return a
 
 def my_rpm( rpm ):
-    rpm_name = (
-            rpm.split( ':' )[ 0 ].rsplit( '|', 1 )[ 0 ] if ':' in rpm
-       else rpm                  .rsplit( '|', 1 )[ 0 ]
+    rpm = rpm.lower()
+    
+    name    = ( splited := rpm.split( '|' ) )[  0 ]
+    version = ( splited                     )[ -1 ] if ':' in splited[ -1 ] else f"0:{ splited[ -1 ] }"
+    distro  = (
+        'rhel' + version.split( 'rhel' )[ 1 ].split( '.' )[ 0 ] if 'rhel' in version else
+        'el'   + version.split( 'el'   )[ 1 ].split( '.' )[ 0 ] if 'el'   in version else
+        '-'
     )
     
-    rhel_version = (
-            'el' + rpm_version.split( 'el' )[ 1 ].split( '.' )[ 0 ] if 'el' in ( rpm_version := rpm[ len( rpm_name ) + 1: ] )
-       else '-'
-    )
+    e = version.split( ':' )[ 0 ]
+    v = version.split( ':' )[ 1 ].split( '-'       )[ 0 ]
+    r = version.split( '-' )[ 1 ].split( '.centos' )[ 0 ] if 'centos' in version else version.split( '-' )[ 1 ]
     
-    epoch = (
-            rpm_version.split( ':' )[ 0 ] if ':' in rpm_version
-       else '-'
-    )
-    
-    version = (
-            rpm_version.split( ':' )[ 1 ].split( '-' )[ 0 ] if ':' in rpm_version
-       else rpm_version.split( '-' )[ 0 ]
-    )
-    
-    release = (
-            rpm_version.split( '-' )[ 1 ].split( '.centos' )[ 0 ] if 'centos' in rpm_version
-       else rpm_version.split( '-' )[ 1 ]
-    )
-    
-    return { rhel_version: { rpm_name: { epoch: { version: { release: { 
-        'rpm': rpm.replace( '|', '-' )
+    return { distro: { name: { e: { v: { r: { 
+        'rpm': ifelse(
+              _condition = ( e == '0' )
+            , _istrue    = f"{ name }-{ v }-{ r }"
+            , _else      = f"{ name }-{ e }:{ v }-{ r }"
+        )
     } } } } } }
 
 def get_system_rpmlist( installedList=[] ):
     my_system_rpmlist = {}
 
-    for rpm_string in popen( '/usr/bin/rpm -qa --queryformat "%{N}|%{EPOCHNUM}:%{V}-%{R}\\n"' ).read().strip().split( '\n' ) if not installedList else installedList:
+    for rpm_string in popen( '/usr/bin/rpm -qa --queryformat "%{N}|%{EPOCHNUM}:%{V}-%{R}\n"' ).read().strip().split( '\n' ) if not installedList else installedList:
       
         if (
                ( rpm_string == ''                   )
