@@ -200,8 +200,8 @@ class REDHAT:
                         f"rhel{ version.split( 'rhel' )[ 1 ].split( '.' )[ 0 ] }" if 'rhel' in version else
                         f"el{   version.split( 'el'   )[ 1 ].split( '.' )[ 0 ] }" if 'el'   in version else
                         '-'
-                    )
-                    
+                    ).split( '_' )[ 0 ]
+                                
                     e = version.split( ':'  )[ 0 ]
                     v = version.split( ':'  )[ 1 ].split( '-'       )[ 0 ]
                     r = version.split( '-'  )[ 1 ].split( '.centos' )[ 0 ] if 'centos' in version else version.split( '-' )[ 1 ]
