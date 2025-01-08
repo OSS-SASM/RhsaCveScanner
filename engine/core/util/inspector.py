@@ -55,19 +55,15 @@ def merge( a, b ):
 
     return a
 
-def my_rpm( rpm ):
+def my_rpm( distro, rpm ):
     rpm = rpm.lower()
     
     name    = ( splited := rpm.split( '|' ) )[  0 ]
     version = ( splited                     )[ -1 ] if ':' in splited[ -1 ] else f"0:{ splited[ -1 ] }"
-    distro  = (
-        'el' + version.split( 'el' )[ 1 ].split( '.' )[ 0 ] if 'el' in version else
-        '-'
-    )
-    
-    e = version.split( ':' )[ 0 ]
-    v = version.split( ':' )[ 1 ].split( '-'       )[ 0 ]
-    r = version.split( '-' )[ 1 ].split( '.centos' )[ 0 ] if 'centos' in version else version.split( '-' )[ 1 ]
+        
+    e = ( splited := version     .split( ':' ) )[ 0 ]
+    v = ( splited := splited[ 1 ].split( '-' ) )[ 0 ]
+    r = ( splited                              )[ 1 ] if '-' in version else '-'
     
     return { distro: { name: { e: { v: { r: { 
         'rpm': ifelse(
@@ -78,6 +74,8 @@ def my_rpm( rpm ):
     } } } } } }
 
 def get_system_rpmlist( installedList=[] ):
+    distro = None
+    
     my_system_rpmlist = {}
 
     for rpm_string in popen( '/usr/bin/rpm -qa --queryformat "%{N}|%{EPOCHNUM}:%{V}-%{R}\n"' ).read().strip().split( '\n' ) if not installedList else installedList:
@@ -87,9 +85,13 @@ def get_system_rpmlist( installedList=[] ):
             or ( rpm_string.startswith( 'kernel' ) )
         ):
             continue
+        
+        elif rpm_string.startswith( 'rocky-release' ):
+            distro = f"el{ rpm_string.split( '.el' )[ 1 ][ 0 ] }"
 
-        merge( my_system_rpmlist, my_rpm( rpm_string ) )
-
+        
+        merge( my_system_rpmlist, my_rpm( distro, rpm_string ) )
+    
     return my_system_rpmlist
 
 def version_compare( a, b ):
