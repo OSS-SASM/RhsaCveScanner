@@ -12,6 +12,7 @@ from json import load    as json_load
 
 # Engine Libraries
 from engine.core.config.default import ENCODING
+from engine.core.util           import ifelse
 
 def merge( a, b ):
     
@@ -60,8 +61,7 @@ def my_rpm( rpm ):
     name    = ( splited := rpm.split( '|' ) )[  0 ]
     version = ( splited                     )[ -1 ] if ':' in splited[ -1 ] else f"0:{ splited[ -1 ] }"
     distro  = (
-        'rhel' + version.split( 'rhel' )[ 1 ].split( '.' )[ 0 ] if 'rhel' in version else
-        'el'   + version.split( 'el'   )[ 1 ].split( '.' )[ 0 ] if 'el'   in version else
+        'el' + version.split( 'el' )[ 1 ].split( '.' )[ 0 ] if 'el' in version else
         '-'
     )
     
@@ -83,8 +83,8 @@ def get_system_rpmlist( installedList=[] ):
     for rpm_string in popen( '/usr/bin/rpm -qa --queryformat "%{N}|%{EPOCHNUM}:%{V}-%{R}\n"' ).read().strip().split( '\n' ) if not installedList else installedList:
       
         if (
-               ( rpm_string == ''                   )
-            or ( rpm_string.startswith( 'kernel-' ) )
+               ( rpm_string == ''                  )
+            or ( rpm_string.startswith( 'kernel' ) )
         ):
             continue
 
@@ -211,7 +211,7 @@ def check_patchlist( dataset_file, system_rpmlist ):
                 for r1 in r[ e1 ][ v1 ]:
                     installed_list.append( ( e1, v1, r1 ) )
 
-        for        e2 in p:
+        for         e2 in p:
             for     v2 in p[ e2 ]:
                 for r2 in p[ e2 ][ v2 ]:
                     patch_list.append( ( e2, v2, r2 ) )
