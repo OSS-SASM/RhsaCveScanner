@@ -16,6 +16,7 @@ from os.path   import abspath  as path_abspath
 from os.path   import join     as path_join
 from pickle    import load     as pkl_load
 from requests  import get      as requests_get
+from re        import search   as re_search
 from re        import findall  as re_findall
 from re        import IGNORECASE
 from cvss      import CVSS2, CVSS3
@@ -126,48 +127,102 @@ class REDHAT:
             if 'cve' not in ( advisory := definition[ 'metadata' ][ 'advisory' ] ):
                 continue
             
-            ###############################################################################################################################################################
-            # CVE
-            ###############################################################################################################################################################
-            for i, cve in enumerate( cveList := ifelse(
+            cveList = ifelse(
                   _condition = isinstance( advisory[ 'cve' ], list )
                 , _istrue    =             advisory[ 'cve' ]
                 , _else      =           [ advisory[ 'cve' ] ]
-            ) ):
-
-                CVE_DETAIL_BY_ID[ cve[ '#text' ] ] = self._parse_cvemeta( {
-                      **cve
-                    , 'title'       : definition[ 'metadata' ][ 'title'       ]
-                    , 'description' : definition[ 'metadata' ][ 'description' ]
-                    , 'from'        : advisory  [ '@from'    ]
-                    , 'reference'   : ifelse(
-                          _condition = isinstance( definition[ 'metadata' ][ 'reference' ], list )
-                        , _istrue    =             definition[ 'metadata' ][ 'reference' ]
-                        , _else      =           [ definition[ 'metadata' ][ 'reference' ] ]
-                      )
-                    , 'bugzilla'    : ifelse(
-                          _condition = isinstance( definition[ 'metadata' ][ 'bugzilla' ], list )
-                        , _istrue    =             definition[ 'metadata' ][ 'bugzilla' ]
-                        , _else      =           [ definition[ 'metadata' ][ 'bugzilla' ] ]
-                      )[ i ] if 'bugzilla' in definition[ 'metadata' ] else []
-                } )
-
-            ###############################################################################################################################################################
-            # 권장 설치 버전 기준 ( 해당 버전 보다 낮은 경우, 노출될 수 있는 취약점 정보가 매핑됨 )
-            ###############################################################################################################################################################
-            merge(
-                  CRITERIA
-                , self._recursive_criteria(
-                      parent  = definition[ 'criteria' ]
-                    , cveList = [ c[ '#text' ] for c in cveList ]
-                  )
             )
+            
+            ###############################################################################################################################################################
+            # 취약한 버전의 패키지가 어떠한 RHEL 배포판 버전 위에서 동작할 때, 영향이 있는지 확인하고
+            # 해당 정보가 확인되는 경우에만 파싱
+            ###############################################################################################################################################################
+            if (
+                    ( 'OR'                                         == definition[ 'criteria' ][ '@operator' ]               )
+                and ( 'Red Hat Enterprise Linux must be installed' == definition[ 'criteria' ][ 'criterion' ][ '@comment' ] )
+                and ( distro :=  self._find_affected_version_of_rhel( definition[ 'criteria' ] )                            )
+            ):
+                ################################################################################################################
+                # 권장 설치 버전 기준 ( 해당 버전 보다 낮은 경우, 노출될 수 있는 취약점 정보가 매핑됨 )
+                ################################################################################################################
+                merge(
+                      CRITERIA
+                    , ( rpmlist := {
+                            distro
+                          : self._recursive_criteria(
+                                parent  = definition[ 'criteria' ][ 'criteria' ]
+                              , cveList = [ c[ '#text' ] for c in cveList ]
+                          )  
+                      } )
+                )
+            
+            ###############################################################################################################################################################
+            # CVE
+            ###############################################################################################################################################################
+            for cve in cveList:
+
+                if cve[ '#text' ] not in CVE_DETAIL_BY_ID:
+                    CVE_DETAIL_BY_ID[ cve[ '#text' ] ] = {}
+                    
+                CVE_DETAIL_BY_ID[ cve[ '#text' ] ] = merge(
+                      CVE_DETAIL_BY_ID[ cve[ '#text' ] ]
+                    , self._parse_cvemeta( {
+                            **cve
+                          , 'description' : definition[ 'metadata' ][ 'description' ]
+                          , 'severity'    : advisory  [ 'severity' ]
+                          , 'from'        : advisory  [ '@from'    ]
+                          , 'remediation' : rpmlist
+                          , 'reference'   : ifelse(
+                                _condition = isinstance( definition[ 'metadata' ][ 'reference' ], list )
+                              , _istrue    =             definition[ 'metadata' ][ 'reference' ]
+                              , _else      =           [ definition[ 'metadata' ][ 'reference' ] ]
+                            )
+                          , 'bugzilla'    : [ bugzilla for bugzilla in (
+                                ifelse(
+                                      _condition = isinstance( advisory[ 'bugzilla' ], list )
+                                    , _istrue    =             advisory[ 'bugzilla' ]
+                                    , _else      =           [ advisory[ 'bugzilla' ] ]
+                                ) if 'bugzilla' in advisory else []
+                            ) if cve[ '#text' ] in bugzilla[ '#text' ] ]
+                      } )
+                )
                 
         return {
               'cve'      : CVE_DETAIL_BY_ID
             , 'criteria' : { 'rpm' : CRITERIA }
         }
 
+    def _find_affected_version_of_rhel( self, parent ):
+        distro = None
+        
+        for child in ifelse(
+              _condition = isinstance( parent, list )
+            , _istrue    =             parent
+            , _else      =           [ parent ]
+        ):
+            if  ( 'criteria' in child                                                      )\
+            and ( distro     := self._find_affected_version_of_rhel( child[ 'criteria' ] ) ):
+                return distro
+                
+            if 'criterion' in child:
+                
+                for criterion in ifelse(
+                      _condition = isinstance( child[ 'criterion' ], list )
+                    , _istrue    =             child[ 'criterion' ]
+                    , _else      =           [ child[ 'criterion' ] ]
+                ):
+                
+                    if ( m :=
+                        re_search(
+                              r'Red\ Hat\ Enterprise\ Linux\ (\d+)\ is\ installed'
+                            , criterion[ '@comment' ]
+                            , IGNORECASE
+                        )
+                    ):
+                        return f'el{ m.group( 1 ) }'
+        
+        return distro
+    
     def _recursive_criteria( self, parent, cveList ):
         result = {}
 
@@ -183,7 +238,7 @@ class REDHAT:
                     , self._recursive_criteria( child[ 'criteria' ], cveList )
                 )
 
-            elif 'criterion' in child:
+            if 'criterion' in child:
 
                 for criterion in ifelse(
                       _condition = isinstance( child[ 'criterion' ], list )
@@ -196,26 +251,21 @@ class REDHAT:
                     
                     name    = ( splited := criterion[ '@comment' ].lower().split() )[  0 ]
                     version = ( splited                                            )[ -1 ] if ':' in splited[ -1 ] else f'0:{ splited[ -1 ] }'
-                    distro  = (
-                        f"rhel{ version.split( 'rhel' )[ 1 ].split( '.' )[ 0 ] }" if 'rhel' in version else
-                        f"el{   version.split( 'el'   )[ 1 ].split( '.' )[ 0 ] }" if 'el'   in version else
-                        '-'
-                    ).split( '_' )[ 0 ]
-                                
-                    e = version.split( ':'  )[ 0 ]
-                    v = version.split( ':'  )[ 1 ].split( '-'       )[ 0 ]
-                    r = version.split( '-'  )[ 1 ].split( '.centos' )[ 0 ] if 'centos' in version else version.split( '-' )[ 1 ]
+                    
+                    e = ( splited := version     .split( ':' ) )[ 0 ]
+                    v = ( splited := splited[ 1 ].split( '-' ) )[ 0 ]
+                    r = ( splited                              )[ 1 ] if '-' in version else '-'
 
                     merge(
                           result
-                        , { distro: { name: { e: { v: { r: {
+                        , { name: { e: { v: { r: {
                               'rpm' : ifelse(
                                     _condition = ( e == '0' )
                                   , _istrue    = f"{ name }-{ v }{ '-' + r if r != '-' else '' }"
                                   , _else      = f"{ name }-{ version }"
                               )
                             , 'cve' : cveList
-                        } } } } } }
+                        } } } } }
                     )
 
         return result
@@ -224,7 +274,7 @@ class REDHAT:
         PARSED = {
             'redhat' : {
                 'rhsa' : {
-                      'title'       : data[ 'title'       ]
+                      'severity'    : data[ 'severity'    ]
                     , 'description' : data[ 'description' ]
                 }
             }
@@ -239,7 +289,8 @@ class REDHAT:
                 , { 'reference' : [ data[ '@href' ] ] }   
             )
             
-        if '@href' in data[ 'bugzilla' ]:
+        if  (            data[ 'bugzilla' ] )\
+        and ( '@href' in data[ 'bugzilla' ] ):
             merge(
                   PARSED[ 'redhat' ]
                 , { 'reference' : [ data[ 'bugzilla' ][ '@href' ] ] }   
