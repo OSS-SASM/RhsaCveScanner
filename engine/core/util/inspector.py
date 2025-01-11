@@ -73,8 +73,7 @@ def my_rpm( distro, rpm ):
         )
     } } } } } }
 
-def get_system_rpmlist( installedList=[ 'bpftool|0:4.18.0-553.5.1.el8_10' ] ): # DEBUG #
-# def get_system_rpmlist( installedList=[] ):
+def get_system_rpmlist( installedList=[] ):
     distro = None
     
     my_system_rpmlist = {}
@@ -93,8 +92,7 @@ def get_system_rpmlist( installedList=[ 'bpftool|0:4.18.0-553.5.1.el8_10' ] ): #
         merge(
               my_system_rpmlist
             , my_rpm(
-                #   distro
-                  'el8'       # DEBUG #
+                  distro
                 , rpm_string
             )
         )
