@@ -168,7 +168,6 @@ class REDHAT:
                       CVE_DETAIL_BY_ID[ cve[ '#text' ] ]
                     , self._parse_cvemeta( {
                             **cve
-                          , 'description' : definition[ 'metadata' ][ 'description' ]
                           , 'severity'    : advisory  [ 'severity' ]
                           , 'from'        : advisory  [ '@from'    ]
                           , 'remediation' : rpmlist
@@ -274,8 +273,7 @@ class REDHAT:
         PARSED = {
             'redhat' : {
                 'rhsa' : {
-                      'severity'    : data[ 'severity'    ]
-                    , 'description' : data[ 'description' ]
+                      'severity' : data[ 'severity' ]
                 }
             }
         }
@@ -285,21 +283,21 @@ class REDHAT:
         #################################################################################################################################################################
         if '@href' in data:
             merge(
-                  PARSED[ 'redhat' ]
+                  PARSED[ 'redhat' ][ 'rhsa' ]
                 , { 'reference' : [ data[ '@href' ] ] }   
             )
             
         if  (            data[ 'bugzilla' ] )\
         and ( '@href' in data[ 'bugzilla' ] ):
             merge(
-                  PARSED[ 'redhat' ]
+                  PARSED[ 'redhat' ][ 'rhsa' ]
                 , { 'reference' : [ data[ 'bugzilla' ][ '@href' ] ] }   
             )
             
         for r in data[ 'reference' ]:
             if 'CVE' != r[ '@source' ]:
                 merge(
-                      PARSED[ 'redhat' ]
+                      PARSED[ 'redhat' ][ 'rhsa' ]
                     , { 'reference' : [ r[ '@ref_url' ] ] }   
                 )   
 
