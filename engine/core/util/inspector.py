@@ -73,7 +73,8 @@ def my_rpm( distro, rpm ):
         )
     } } } } } }
 
-def get_system_rpmlist( installedList=[] ):
+def get_system_rpmlist( installedList=[ 'bpftool|0:4.18.0-553.5.1.el8_10' ] ): # DEBUG #
+# def get_system_rpmlist( installedList=[] ):
     distro = None
     
     my_system_rpmlist = {}
@@ -89,8 +90,14 @@ def get_system_rpmlist( installedList=[] ):
         elif rpm_string.startswith( 'rocky-release' ):
             distro = f"el{ rpm_string.split( '.el' )[ 1 ][ 0 ] }"
 
-        
-        merge( my_system_rpmlist, my_rpm( distro, rpm_string ) )
+        merge(
+              my_system_rpmlist
+            , my_rpm(
+                #   distro
+                  'el8'       # DEBUG #
+                , rpm_string
+            )
+        )
     
     return my_system_rpmlist
 
@@ -202,6 +209,29 @@ def version_compare( a, b ):
 
     return int( rc )
 
+def get_latest_version( pkgname, versions ):
+    target = versions[ 0 ] if ':' in versions[ 0 ] else f"0:{ versions[ 0 ] }"
+    latest = (
+          ( splited := target      .split( ':' ) )[ 0 ]
+        , ( splited := splited[ 1 ].split( '-' ) )[ 0 ]
+        , ( splited                              )[ 1 ] if '-' in target else '-'
+    )
+    
+    for version in versions:
+        target = version if ':' in version else f"0:{ version }"
+        target = (
+              ( splited := target      .split( ':' ) )[ 0 ]
+            , ( splited := splited[ 1 ].split( '-' ) )[ 0 ]
+            , ( splited                              )[ 1 ] if '-' in target else '-'
+        )
+        
+        if -1 == version_compare( latest, target ):
+            latest = target
+    
+    e, v, r = latest
+    
+    return f"{ pkgname }-{ v }-{ r }" if '0' == e else f"{ pkgname }-{ e }:{ v }-{ r }"
+
 def check_patchlist( dataset_file, system_rpmlist ):
     def _inspection( r, p ):
         result         = []
@@ -257,17 +287,23 @@ def check_patchlist( dataset_file, system_rpmlist ):
 
             else:
                 for vul in _inspection( r[ rhv ][ rpm ], p[ rhv ][ rpm ] ):
-                    result = merge(
+                    merge(
                           result
-                        , { 
-                            rhv : { 
-                                rpm: {
-                                     '_installed' :                                         vul[ '_installed' ]
-                                   , '_vulnfixed' :                                         vul[ '_patch'     ]
-                                   , 'cve'        : { cveID : cvedict[ cveID ] for cveID in vul[ 'cve'        ] }
-                                }
-                            }
+                        , {
+                              rpm : { 
+                                    '_installed' :   vul[ '_installed' ]
+                                  , '_vulnfixed' : [ vul[ '_patch'     ] ]
+                                  , 'cve'        :   vul[ 'cve'        ]
+                              }
                           }
                     )
     
+                if rpm in result:
+                    result[ rpm ][ '_vulnfixed' ] = get_latest_version(
+                          pkgname  =                 rpm
+                        , versions = [ _.lstrip( f'{ rpm }-' ) for _ in set( result[ rpm ][ '_vulnfixed' ] ) ]
+                    )
+
+                    result[ rpm ][ 'cve' ] = { cveID : cvedict[ cveID ] for cveID in set( result[ rpm ][ 'cve' ] ) }
+                
     return result
