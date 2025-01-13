@@ -74,7 +74,7 @@ def my_rpm( distro, rpm ):
     } } } } } }
 
 def get_system_rpmlist( installedList=[] ):
-    distro = None
+    distro = 'el' + popen( """cat /etc/*-release 2>/dev/null | uniq | grep "^VERSION=" | awk -F= '{print$2}' | sed 's/"//g'""" ).read()[ 0 ]
     
     my_system_rpmlist = {}
 
@@ -86,9 +86,6 @@ def get_system_rpmlist( installedList=[] ):
         ):
             continue
         
-        elif rpm_string.startswith( 'rocky-release' ):
-            distro = f"el{ rpm_string.split( '.el' )[ 1 ][ 0 ] }"
-
         merge(
               my_system_rpmlist
             , my_rpm(
